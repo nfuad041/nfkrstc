@@ -1,0 +1,190 @@
+{
+  "outputs": [
+    "timestamp", "channel", "energy", 
+    "bl", "bl_std", "bl_slope", "bl_intercept",
+    "tp_max", "tp_0", "tp_02", "tp_05", "tp_10", 
+    "tp_20", "tp_50", "tp_80", "tp_90", "tp_95", "tp_99",
+    "trapEmax", "triEmax", "A_10", "AoE", "ToE", "dcr"
+  ],
+  "processors": {
+    "bl, bl_std, bl_slope, bl_intercept": {
+      "function": "linear_slope_fit",
+      "module": "pygama.dsp.processors",
+      "args" : ["waveform[0:3000]", "bl", "bl_std", "bl_slope", "bl_intercept"],
+      "unit": ["ADC","ADC","ADC","ADC"]
+    },   
+    "wf_presum": {
+      "function": "presum",
+      "module": "pygama.dsp.processors",
+      "args": ["waveform", "wf_presum(shape=len(waveform)/8, period=waveform.period*8, unit='ADC')"]
+    },
+    "wf_blsub": {
+      "function": "bl_subtract",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_presum", "bl", "wf_blsub"],
+      "unit": "ADC"
+    },
+    "A, tau, C": {
+        "function": "pole_zero_fit_scipy",
+        "module": "pygama.dsp.processors",
+        "args": ["wf_blsub", "A", "tau", "C"],
+        "kwargs": {"signature":"(n)->(),(),()", "types":["f->fff"]},
+        "prereqs": ["wf_blsub"],
+        "unit": ["ADC", "ns", "ADC"]
+    },
+    "wf_pz": {
+      "function": "double_pole_zero",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_blsub", "db.pz2.tau1", "db.pz2.tau2",  "db.pz2.frac", "wf_pz"],
+      "unit": "ADC",
+      "defaults": {"db.pz2.tau1":"57.05*us", "db.pz2.tau2":"3.*us", "db.pz2.frac":"0.028"}
+    },
+    "wf_etrap": {
+      "function": "trap_norm",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_pz", "db.etrap.rise", "db.etrap.flat", "wf_etrap"],
+      "unit": "ADC",
+      "defaults": { "db.etrap.rise":"12.7*us",  "db.etrap.flat":"1.7*us"}
+    },   
+    "wf_triangle": { 
+      "function": "trap_norm",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_pz", "db.triangle.rise", "db.triangle.flat", "wf_triangle"],
+      "unit": "ADC",
+      "defaults": { "db.triangle.rise":"100*ns",  "db.triangle.flat":"10*ns"}
+    },     
+    "wf_atrap": { 
+      "function": "asym_trap_filter",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_pz", "0.05*us", "2*us","3*us", "wf_atrap"],
+      "unit": "ADC"
+    }, 
+    "tp_min, tp_max, wf_min, wf_max":{
+      "function": "min_max",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_blsub", "tp_min", "tp_max", "wf_min", "wf_max"],
+      "unit": ["ns","ns","ADC", "ADC"]
+    },
+    "tp_0": {
+      "function": "time_point_thresh",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_atrap", 0, "tp_max", 0, "tp_0(unit=ns)"],
+      "unit": "ns"
+    },
+    "tp_02": {
+      "function": "time_point_thresh",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_blsub", "0.02*wf_max", "tp_0", 1, "tp_02"],
+      "unit": "ns"
+    },
+    "tp_05": {
+      "function": "time_point_thresh",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_blsub", "0.05*wf_max", "tp_0", 1, "tp_05"],
+      "unit": "ns"
+    },
+    "tp_10": {
+      "function": "time_point_thresh",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_blsub", "0.1*wf_max", "tp_0", 1, "tp_10"],
+      "unit": "ns"
+    },             
+    "tp_20": {
+      "function": "time_point_thresh",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_blsub", "0.2*wf_max", "tp_0", 1, "tp_20"],
+      "unit": "ns"
+    },  
+    "tp_50": {
+      "function": "time_point_thresh",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_blsub", "0.5*wf_max", "tp_max", 0, "tp_50"],
+      "unit": "ns"
+    },    
+    "tp_80": {
+      "function": "time_point_thresh",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_blsub", "0.8*wf_max", "tp_max", 0, "tp_80"],
+      "unit": "ns"
+    }, 
+    "tp_90": {
+      "function": "time_point_thresh",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_blsub", "0.9*wf_max", "tp_max", 0, "tp_90"],
+      "unit": "ns"
+    }, 
+    "tp_95": {
+      "function": "time_point_thresh",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_blsub", "0.95*wf_max", "tp_max", 0, "tp_95"],
+      "unit": "ns"
+    },   
+    "tp_99": {
+      "function": "time_point_thresh",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_blsub", "0.99*wf_max", "tp_max", 0, "tp_99"],
+      "unit": "ns"
+    },   
+    "trapEmax": {
+      "function": "amax",
+      "module": "numpy",
+      "args": ["wf_etrap", 1, "trapEmax"],
+      "kwargs": {"signature":"(n),()->()", "types":["fi->f"]},
+      "unit": "ADC"
+    }, 
+      "trapEftp": {
+      "function": "fixed_time_pickoff",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_etrap", "tp_0+(5*us+9*us)", "trapEftp"],
+      "unit": "ns",
+      "prereqs": ["wf_etrap", "tp_0"]
+    },
+    "triEmax": {
+      "function": "amax",
+      "module": "numpy",
+      "args": ["wf_triangle", 1, "triEmax"],
+      "kwargs": {"signature":"(n),()->()", "types":["fi->f"]},
+      "unit": "ADC"
+    },     
+    "curr": {
+      "comment": "3rd argument allocates memory for a derivative of type float",
+      "function": "avg_current",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_pz", 10, "curr(len(wf_pz)-10, 'f')"],
+      "unit": "ADC/sample"
+    },
+    "A_10": {
+      "function": "amax",
+      "module": "numpy",
+      "args": ["curr", 1, "A_10"],
+      "kwargs": {"signature":"(n),()->()", "types":["fi->f"]},
+      "unit": "ADC"
+    },   
+    "AoE": {
+      "function": "divide",
+      "module": "numpy",
+      "args":["A_10", "trapEmax", "AoE"],
+      "unit": "1/sample"
+    },  
+    "ToE": {
+      "function": "divide",
+      "module": "numpy",
+      "args": ["triEmax", "trapEmax", "ToE"],
+      "unit": "ADC"
+    },
+      "dcr_raw": {
+      "function": "trap_pickoff",
+      "module": "pygama.dsp.processors",
+      "args": ["wf_pz", 200, 1000, "tp_0+1.5*us", "dcr_raw"],
+      "unit": "ADC",
+      "prereqs": ["wf_pz", "tp_0"]
+    },
+    "dcr": {
+      "function": "divide",
+      "module": "numpy",
+      "args": ["dcr_raw", "trapEmax", "dcr"],
+      "unit": "ADC",
+      "prereqs": ["dcr_raw", "trapEmax"]
+    }
+  }
+}

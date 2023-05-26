@@ -1,0 +1,22 @@
+{
+  "experiment" : "krstc",
+
+  "fileDB" : "/global/cfs/cdirs/legend/software/KrSTC/data/fileDB.h5",
+  "runDB" : "/global/homes/f/fnafis/krstc/runDB.json",
+  "ecal_config": "/global/cfs/cdirs/legend/software/KrSTC/data/meta/config_ecal.json",
+  "runSelectionDB" : "/global/cfs/cdirs/legend/software/KrSTC/data/meta/run_selection.json",
+
+  "daq" : "ORCA",
+  "daq_dir" : "$KRSTC_DAQ",
+  "daq_ignore" : [".log",".DS_Store", "openFiles"],
+  "lh5_dir" : "/global/cfs/cdirs/m2676/data/krstc/LH5",
+
+  "tier_dirs" : ["raw","dsp","hit"],
+  "subsystems" : [""],
+  "run_types" : [""],
+  "evt_dirs" : [""],
+
+  "unique_key" : "krstc-cyc{cycle}-{YYYY}{mm}{dd}",
+  "daq_template" : "{YYYY}-{mm}-{dd}-BackgroundRun{cycle}",
+  "lh5_template" : "krstc_run{run}_cyc{cycle}_{tier}.lh5"
+}
