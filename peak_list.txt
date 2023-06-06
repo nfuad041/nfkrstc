@@ -1,5 +1,5 @@
 iso e_kev tall
-212Pb 239.6 T
+212Pb 238.6 T
 214Pb 295.2 T
 228Ac 338
 214Pb 351.9 T

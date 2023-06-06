@@ -40,15 +40,35 @@ def get_dsp_params_list(run):
     f = h5py.File('/global/cfs/cdirs/m2676/data/krstc/LH5/dsp/krstc_run'+str(run)+'_cyc'+str(start_cycle)+'_dsp.lh5','r')
     return f['ORSIS3302DecoderForEnergy/dsp'].keys()
 
-def load_dsp(run, 
+def load_dsp(runs=[], **kwargs):
+    """
+    Load dsp data for a given list of runs
+    """
+    dat = pd.DataFrame()
+    run_types = []
+    run_descriptions = []
+    for run in runs:
+        d, run_type, run_description = load_dsp_single_run(run, **kwargs)
+        run_types.append(run_type)
+        run_descriptions.append(run_description)
+        dat = pd.concat([dat,d])
+    return dat, run_types, run_descriptions
+
+def load_dsp_single_run(run, 
              params=[['trapEmax', 'tp_0', 'stp_20']], 
              verbose=True,
              all_columns=False,
-             calibration_consts = [0.433,0] #[0.4309, 0.208],  #[0.431, 0.132]
+             calibration_consts = [0.3956,0], #[0.4309, 0.208],  #[0.431, 0.132]
              skip_cycles = None):
     """
     Load dsp data for a given run
     """
+
+    cal_consts = pd.read_csv('calibration_constants.csv')
+    cal_const = cal_consts[cal_consts['Run']==run]
+    print('cal const: ', cal_const)
+    
+
     start_cycle = int(runDB[str(run)][0].split('-')[0])
     if runDB[str(run)][0].__contains__('-'):
         end_cycle = int(runDB[str(run)][0].split('-')[1])
@@ -82,7 +102,10 @@ def load_dsp(run,
             print(hit)
         # load the data
         d = lh5.load_dfs(hit, *params, 'ORSIS3302DecoderForEnergy/dsp')
-        d['trapEmax_cal_keV'] = d['trapEmax']*calibration_consts[0] + calibration_consts[1]
+
+
+        
+        d['trapEmax_cal_keV'] = float(cal_const['p2'])*d['trapEmax']*d['trapEmax'] + float(cal_const['p1'])*d['trapEmax'] + float(cal_const['p0'])
         if params[0].__contains__('tp_0'):
             d['pulse_rise_time_ns'] = d['stp_20']-d['tp_0']
         d['run'] = run
@@ -113,6 +136,7 @@ def get_raw_wfs(df,
                 xlim = (36000,42000),
                 blsub = True,
                 align_at = 'tp_50',
+                savgol = False,
                 **kwargs):
     if random:
         df = df.sample(n=nwfs)
@@ -133,6 +157,9 @@ def get_raw_wfs(df,
             if align_at is not None:
                 wf = np.roll(wf, ((28000 - row[align_at])/10).astype(int))
                 xlim = (24000,32000)
+
+            if savgol:
+                wf = savgol_filter(wf, 51, 3)
             wfs.append(wf)
             
             # shifted_wf = np.roll(wf, ((superpulse_shift_to-row[superpulse_shift_from])/10).astype(int))
@@ -195,6 +222,7 @@ def get_superpulse(df_cut,
                    shift_from = 'tp_0',
                    plot_shifted = False,
                    plot_superpulse = True,
+                   savgol = False,
                    superpulse_label = 'superpulse',
                    **kwargs):
     """
@@ -243,6 +271,8 @@ def get_superpulse(df_cut,
     #print('shift from size', shift_fromss.shape)
     for wf, shfrom in zip(wfss, shift_fromss):
         #print('shfrom',shfrom)
+        if savgol:
+            wf = savgol_filter(wf, 51,3)
         shifted_wfss.append(np.roll(wf, int((shift_to-shfrom)/10)))
 
     
